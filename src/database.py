@@ -1,6 +1,6 @@
 import sqlite3
 import os
-from typing import List, Optional, Tuple
+from typing import List, Optional
 
 try:
     from src.config import cfg
@@ -66,9 +66,3 @@ def count_clients() -> int:
     with get_connection() as conn:
         row = conn.execute("SELECT COUNT(*) FROM clients").fetchone()
         return row[0] if row else 0
-
-
-def get_clients_for_sync() -> List[Tuple[str, str]]:
-    with get_connection() as conn:
-        rows = conn.execute("SELECT client_uuid, email FROM clients").fetchall()
-        return [(r["client_uuid"], r["email"]) for r in rows]
