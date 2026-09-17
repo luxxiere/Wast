@@ -2,7 +2,7 @@
 set -euo pipefail
 
 log() {
-    echo "[wast] $1"
+    echo "[Wast] $1"
 }
 
 if [ "$EUID" -ne 0 ]; then

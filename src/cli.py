@@ -23,13 +23,11 @@ try:
         get_clients as db_get_clients,
         get_client_by_id as db_get_client_by_id,
         delete_client as db_delete_client,
-        count_clients as db_count_clients,
-        get_clients_for_sync as db_get_clients_for_sync
+        count_clients as db_count_clients
     )
     from src.api import (
         xray_add_user,
-        xray_remove_user,
-        xray_sync_users
+        xray_remove_user
     )
     from src.stats import (
         get_service_status,
@@ -48,13 +46,11 @@ except ImportError:
         get_clients as db_get_clients,
         get_client_by_id as db_get_client_by_id,
         delete_client as db_delete_client,
-        count_clients as db_count_clients,
-        get_clients_for_sync as db_get_clients_for_sync
+        count_clients as db_count_clients
     )
     from api import (
         xray_add_user,
-        xray_remove_user,
-        xray_sync_users
+        xray_remove_user
     )
     from stats import (
         get_service_status,
@@ -112,7 +108,7 @@ def remove_sub_file(token: str):
 
 def add_client():
     print("Добавить клиента\n")
-    name = input("Имя: ").strip()
+    name = input("Имя (Любое): ").strip()
     if not name:
         print("\nИмя не может быть пустым")
         return
@@ -144,9 +140,9 @@ def list_clients():
         print("Клиентов пока нет")
         return
     for r in rows:
-        print(f"[{r['id']}] {r['name']} ({r['country']})")
-        print(f"    Подписка:  {cfg.sub_base_url}/{r['token']}")
-        print(f"    Создан:    {r['created_at']}\n")
+        print(f"[{r['id']}] {r['name']}")
+        print(f"  Подписка:  {cfg.sub_base_url}/{r['token']}")
+        print(f"  Создан:    {r['created_at']}\n")
 
 
 def delete_client():
@@ -156,7 +152,7 @@ def delete_client():
         print("Клиентов пока нет")
         return
     for r in rows:
-        print(f"[{r['id']}] {r['name']} ({r['country']})")
+        print(f"[{r['id']}] {r['name']}")
     raw = input("\nID клиента для удаления: ").strip()
     if not raw.isdigit():
         print("\nНекорректный ID")
@@ -177,24 +173,12 @@ def delete_client():
     print(f"\nКлиент {name} удален")
 
 
-def sync_clients():
-    print("Синхронизация с Xray\n")
-    users = db_get_clients_for_sync()
-    if not users:
-        print("В базе нет клиентов для синхронизации")
-        return
-    success, errors = xray_sync_users(users)
-    print(f"Успешно: {success}")
-    if errors:
-        print(f"Ошибок:  {errors}")
-
-
 def clients_menu():
     while True:
         os.system("clear")
         cnt = db_count_clients()
         print("Управление клиентами\n")
-        print(f"Клиентов в базе:     {cnt}\n")
+        print(f"Всего клиентов: {cnt}\n")
         print("1) Список клиентов")
         print("2) Добавить клиента")
         print("3) Удалить клиента")
@@ -220,12 +204,10 @@ def server_info():
     os.system("clear")
     stub_msg, sub_msg = check_wast_status(cfg.domain, cfg.sub_dir)
     cert_expiry = get_cert_expiry(cfg.domain)
-    client_cnt = db_count_clients()
 
     print("Состояние сервера\n")
     print(f"Домен:           {cfg.domain}")
-    print(f"SSL сертификат:  {cert_expiry}")
-    print(f"Клиентов в базе: {client_cnt}\n")
+    print(f"SSL сертификат:  {cert_expiry}\n")
     print("Службы:")
     print(f"  Nginx:         {get_service_status('nginx')}")
     print(f"  Xray:          {get_service_status('xray')}")
@@ -288,19 +270,16 @@ def main():
         nginx_st = "запущен" if "active" in get_service_status("nginx") else "остановлен"
         xray_st = "запущен" if "active" in get_service_status("xray") else "остановлен"
         bbr_st = "включен" if "bbr" in get_bbr_status() else "выключен"
-        cnt = db_count_clients()
 
         print("╔═══════════════════════════════╗")
         print("║        Wast by Luxiere        ║")
         print("╚═══════════════════════════════╝\n")
         print(f"Домен:           {cfg.domain}")
         print(f"Nginx / Xray:    {nginx_st} / {xray_st}")
-        print(f"BBR:             {bbr_st}")
-        print(f"Клиенты:         {cnt}\n")
+        print(f"BBR:             {bbr_st}\n")
         print("1) Управление клиентами")
         print("2) Состояние сервера")
-        print("3) Синхронизировать с Xray")
-        print("4) Удалить Wast")
+        print("3) Удалить Wast")
         print("Enter) Выход\n")
         choice = input("Выберите пункт: ").strip()
         if choice == "1":
@@ -308,10 +287,6 @@ def main():
         elif choice == "2":
             server_info()
         elif choice == "3":
-            os.system("clear")
-            sync_clients()
-            input("\nEnter) Вернуться в предыдущее меню")
-        elif choice == "4":
             os.system("clear")
             full_uninstall()
         elif choice == "" or choice == "0":
