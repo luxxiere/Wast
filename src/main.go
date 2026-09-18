@@ -51,7 +51,6 @@ func requireRoot() {
 }
 
 func printHelp() {
-	fmt.Println("Wast")
 	fmt.Println("Использование:")
 	fmt.Println("  wast <команда> [аргументы]")
 	fmt.Println()

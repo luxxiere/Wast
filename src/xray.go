@@ -215,7 +215,7 @@ func XrayRemoveUser(cfg *Config, email string) error {
 }
 
 func BuildVlessLink(domain, publicKey, shortID, clientUUID, country string) string {
-	escapedCountry := url.QueryEscape(country)
+	escapedCountry := url.PathEscape(country)
 	return fmt.Sprintf(
 		"vless://%s@%s:443?encryption=none&flow=xtls-rprx-vision&security=reality&sni=%s&fp=firefox&pbk=%s&sid=%s&spx=%%2F&type=tcp#%s",
 		clientUUID,
