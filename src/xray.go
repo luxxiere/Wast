@@ -1,6 +1,7 @@
 package main
 
 import (
+	"database/sql"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -150,6 +151,58 @@ func UpdateXrayConfigRemove(email, inboundTag string) error {
 	return os.WriteFile(p, out, 0644)
 }
 
+func GetXrayClients(inboundTag string) (map[string]bool, error) {
+	p := GetXrayConfigPath()
+	result := make(map[string]bool)
+	if _, err := os.Stat(p); os.IsNotExist(err) {
+		return result, nil
+	}
+
+	data, err := os.ReadFile(p)
+	if err != nil {
+		return nil, err
+	}
+
+	var root map[string]interface{}
+	if err := json.Unmarshal(data, &root); err != nil {
+		return nil, err
+	}
+
+	inbounds, ok := root["inbounds"].([]interface{})
+	if !ok {
+		return result, nil
+	}
+
+	for _, ib := range inbounds {
+		ibMap, ok := ib.(map[string]interface{})
+		if !ok || ibMap["tag"] != inboundTag {
+			continue
+		}
+
+		settings, ok := ibMap["settings"].(map[string]interface{})
+		if !ok {
+			continue
+		}
+
+		clients, ok := settings["clients"].([]interface{})
+		if !ok {
+			continue
+		}
+
+		for _, c := range clients {
+			cMap, ok := c.(map[string]interface{})
+			if !ok {
+				continue
+			}
+			if email, ok := cMap["email"].(string); ok && email != "" {
+				result[email] = true
+			}
+		}
+		break
+	}
+	return result, nil
+}
+
 func XrayAddUser(cfg *Config, clientUUID, email, flow string) error {
 	_ = UpdateXrayConfigAdd(clientUUID, email, flow, cfg.InboundTag)
 
@@ -227,7 +280,18 @@ func BuildVlessLink(domain, publicKey, shortID, clientUUID, country string) stri
 	)
 }
 
-func WriteSubFile(subDir, token, link string) error {
+func BuildUserSubContent(clientUUID string, nodes []Node) string {
+	var links []string
+	for _, n := range nodes {
+		if n.Status != "active" {
+			continue
+		}
+		links = append(links, BuildVlessLink(n.Domain, n.PublicKey, n.ShortID, clientUUID, n.Name))
+	}
+	return strings.Join(links, "\n")
+}
+
+func WriteSubContent(subDir, token, content string) error {
 	if !validTokenRegex.MatchString(token) {
 		return errors.New("invalid subscription token")
 	}
@@ -237,8 +301,12 @@ func WriteSubFile(subDir, token, link string) error {
 	}
 
 	filePath := filepath.Join(subDir, token+".txt")
-	encoded := base64.StdEncoding.EncodeToString([]byte(link))
+	encoded := base64.StdEncoding.EncodeToString([]byte(content))
 	return os.WriteFile(filePath, []byte(encoded), 0644)
+}
+
+func WriteSubFile(subDir, token, link string) error {
+	return WriteSubContent(subDir, token, link)
 }
 
 func RemoveSubFile(subDir, token string) error {
@@ -251,4 +319,22 @@ func RemoveSubFile(subDir, token string) error {
 		return nil
 	}
 	return os.Remove(filePath)
+}
+
+func RegenerateAllSubscriptions(db *sql.DB, subDir string) error {
+	clients, err := GetClients(db)
+	if err != nil {
+		return err
+	}
+	nodes, err := GetActiveNodes(db)
+	if err != nil {
+		return err
+	}
+	for _, c := range clients {
+		content := BuildUserSubContent(c.ClientUUID, nodes)
+		if err := WriteSubContent(subDir, c.Token, content); err != nil {
+			return err
+		}
+	}
+	return nil
 }

@@ -1,0 +1,13 @@
+[Unit]
+Description=Wast Node Agent
+After=network.target xray.service
+
+[Service]
+Type=simple
+User=root
+ExecStart=/usr/local/bin/wast daemon
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

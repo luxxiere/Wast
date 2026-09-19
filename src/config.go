@@ -9,28 +9,38 @@ import (
 const DefaultConfigPath = "/opt/wast/config.json"
 
 type Config struct {
-	Domain     string `json:"domain"`
-	PublicKey  string `json:"public_key"`
-	ShortID    string `json:"short_id"`
-	InboundTag string `json:"inbound_tag"`
-	APIAddr    string `json:"api_addr"`
-	XrayBin    string `json:"xray_bin"`
-	DBPath     string `json:"db_path"`
-	SubDir     string `json:"sub_dir"`
-	Country    string `json:"country"`
-	SubBaseURL string `json:"sub_base_url"`
-	configPath string `json:"-"`
+	Role         string `json:"role"`
+	MainDomain   string `json:"main_domain"`
+	MasterURL    string `json:"master_url"`
+	NodeToken    string `json:"node_token"`
+	NodeID       int64  `json:"node_id"`
+	Domain       string `json:"domain"`
+	PublicKey    string `json:"public_key"`
+	ShortID      string `json:"short_id"`
+	InboundTag   string `json:"inbound_tag"`
+	APIAddr      string `json:"api_addr"`
+	XrayBin      string `json:"xray_bin"`
+	DBPath       string `json:"db_path"`
+	SubDir       string `json:"sub_dir"`
+	Country      string `json:"country"`
+	SubBaseURL   string `json:"sub_base_url"`
+	DaemonPort   int    `json:"daemon_port"`
+	SyncInterval int    `json:"sync_interval"`
+	configPath   string `json:"-"`
 }
 
 func DefaultConfig() *Config {
 	return &Config{
-		InboundTag: "vless-in",
-		APIAddr:    "127.0.0.1:10085",
-		XrayBin:    "/usr/local/bin/xray",
-		DBPath:     "/opt/wast/wast.db",
-		SubDir:     "/var/www/wast/sub",
-		Country:    "Default",
-		configPath: DefaultConfigPath,
+		Role:         "master",
+		InboundTag:   "vless-in",
+		APIAddr:      "127.0.0.1:10085",
+		XrayBin:      "/usr/local/bin/xray",
+		DBPath:       "/opt/wast/wast.db",
+		SubDir:       "/var/www/wast/sub",
+		Country:      "Default",
+		DaemonPort:   8080,
+		SyncInterval: 5,
+		configPath:   DefaultConfigPath,
 	}
 }
 
@@ -57,8 +67,21 @@ func LoadConfig(customPath ...string) (*Config, error) {
 		return nil, err
 	}
 
-	if cfg.SubBaseURL == "" && cfg.Domain != "" {
-		cfg.SubBaseURL = "https://" + cfg.Domain + "/sub"
+	if cfg.Role == "" {
+		cfg.Role = "master"
+	}
+	if cfg.DaemonPort <= 0 {
+		cfg.DaemonPort = 8080
+	}
+	if cfg.SyncInterval <= 0 {
+		cfg.SyncInterval = 15
+	}
+	if cfg.SubBaseURL == "" {
+		if cfg.MainDomain != "" {
+			cfg.SubBaseURL = "https://" + cfg.MainDomain + "/sub"
+		} else if cfg.Domain != "" {
+			cfg.SubBaseURL = "https://" + cfg.Domain + "/sub"
+		}
 	}
 	if cfg.Country == "" {
 		cfg.Country = "Default"

@@ -181,9 +181,10 @@ func GetRAMInfo() string {
 			continue
 		}
 		v, _ := strconv.ParseFloat(valParts[0], 64)
-		if key == "MemTotal" {
+		switch key {
+		case "MemTotal":
 			totalKB = v
-		} else if key == "MemAvailable" {
+		case "MemAvailable":
 			availKB = v
 		}
 	}
